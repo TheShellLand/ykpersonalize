@@ -93,15 +93,15 @@ def unique(iterable):
 
 totalKeys = 0
 
+# for a in unique(itertools.permutations(bruteKeys, r=pRange)):
+#     # for a in itertools.permutations(bruteKeys, r=pRange):
+#     totalKeys = totalKeys + 1
+#     bruteKeysCount = totalKeys
+#     print('Creating brute key list, total counted:', totalKeys)
+#
 for a in unique(itertools.permutations(bruteKeys, r=pRange)):
     # for a in itertools.permutations(bruteKeys, r=pRange):
-    totalKeys = totalKeys + 1
-    bruteKeysCount = totalKeys
-    print('Creating brute key list, total counted:', totalKeys)
-
-for a in unique(itertools.permutations(bruteKeys, r=pRange)):
-    # for a in itertools.permutations(bruteKeys, r=pRange):
-    bruteKeysCount = bruteKeysCount - 1
+    #    bruteKeysCount = bruteKeysCount - 1
 
     if pRange == 12:
         key1, key2, key3, key4, key5, key6, key7, key8, key9, key10, key11, key12 = a  # convert tuple to int
@@ -157,8 +157,9 @@ for a in unique(itertools.permutations(bruteKeys, r=pRange)):
         print('Key Found! ', ykKey[2:10], sep='')
         break
     else:
-        print('incorrect key:', ykKeyGuess[2:], '...', 'keys remaining:', bruteKeysCount)
-
+        #print('incorrect key:', ykKeyGuess[2:], '...', 'keys remaining:', bruteKeysCount)
+        print('incorrect key:', ykKeyGuess[2:])
+'''
         # if ykKeyGuess[10:] == 1111:
         #    break
 
@@ -174,3 +175,4 @@ for a in unique(itertools.permutations(bruteKeys, r=pRange)):
                 print('Last run took:', (timeEnd - timeStart) / 60, 'minutes')
             elif (timeEnd - timeStart) / 60 > 60:
                 print('Last run took:', (timeEnd - timeStart) / 60 / 60, 'hours')
+'''
