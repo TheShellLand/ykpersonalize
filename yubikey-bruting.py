@@ -157,7 +157,7 @@ for a in unique(itertools.permutations(bruteKeys, r=pRange)):
         print('Key Found! ', ykKey[2:10], sep='')
         break
     else:
-        #print('incorrect key:', ykKeyGuess[2:], '...', 'keys remaining:', bruteKeysCount)
+        # print('incorrect key:', ykKeyGuess[2:], '...', 'keys remaining:', bruteKeysCount)
         print('incorrect key:', ykKeyGuess[2:])
 '''
         # if ykKeyGuess[10:] == 1111:
