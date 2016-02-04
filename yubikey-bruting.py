@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf8 -*-
 
+# stopped at 860188200000
+
+
 import re
 import chardet
 import time
@@ -14,7 +17,7 @@ ykProfile = '-2'  # choose second profile
 ykKey = '-c'  # 6 bytes hex 00 11 22 33 44 55
 ykPrompt = '-y'  # always commit
 pRange = 8
-pRangeNotTooLarge = 9
+pRangeNotTooLarge = 8
 
 if platform.system() == 'Linux':
     yubikeyPersonalize = yubikeyPersonalizeLinux

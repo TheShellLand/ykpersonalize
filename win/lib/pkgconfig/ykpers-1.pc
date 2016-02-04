@@ -1,0 +1,11 @@
+prefix=/home/klas/code/c/yubikey-personalization/tmp/root
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: Libykpers
+Description: Personalization library for the YubiKey
+URL: http://www.yubico.com/
+Version: 1.17.3
+Libs: -L${libdir} -lykpers-1 
+Cflags: -I${includedir}/ykpers-1 -pthread
