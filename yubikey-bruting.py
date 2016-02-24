@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf8 -*-
 
-# stopped at 860188200000
-
 
 import re
 import chardet
@@ -11,181 +9,63 @@ import itertools
 import platform
 from subprocess import Popen, PIPE
 
-yubikeyPersonalizeWin = 'win/bin/ykpersonalize.exe'
-yubikeyPersonalizeLinux = 'linux/ykpers-1.17.2/ykpersonalize'
-ykProfile = '-2'  # choose second profile
-ykKey = '-c'  # 6 bytes hex 00 11 22 33 44 55
-ykPrompt = '-y'  # always commit
-pRange = 8
-pRangeNotTooLarge = 8
+YUBIKEY_PERSONALIZE_WIN = 'win/bin/ykpersonalize.exe'
+YUBIKEY_PERSONALIZE_LINUX = 'linux/ykpers-1.17.2/ykpersonalize'
+YK_PROFILE = '-2'  # choose second profile
+YK_KEY = '-c'  # 6 bytes hex 00 11 22 33 44 55
+YK_PROMPT = '-y'  # always commit
+ARRAY_RANGE = 12
 
 if platform.system() == 'Linux':
-    yubikeyPersonalize = yubikeyPersonalizeLinux
+    YUBIKEY_PERSONALIZE = YUBIKEY_PERSONALIZE_LINUX
 else:
-    yubikeyPersonalize = yubikeyPersonalizeWin
+    YUBIKEY_PERSONALIZE = YUBIKEY_PERSONALIZE_WIN
 
-if pRange == 12:
-    bruteKeys = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5,
-                 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8,
-                 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]
-elif pRange == 11:
-    bruteKeys = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6,
-                 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9,
-                 9, 9, 9, 9, 9, 9, 9, 9, 9]
-elif pRange == 10:
-    bruteKeys = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3,
-                 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6,
-                 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]
-elif pRange == 9:
-    bruteKeys = [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3,
-                 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7,
-                 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9]
-elif pRange == 8:
-    bruteKeys = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4,
-                 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8,
-                 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9]
-elif pRange == 7:
-    bruteKeys = [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4,
-                 4, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9,
-                 9, 9]
-elif pRange == 6:
-    bruteKeys = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5,
-                 5, 5, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9]
-elif pRange == 5:
-    bruteKeys = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6,
-                 6, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9]
-elif pRange == 4:
-    bruteKeys = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8,
-                 8, 8, 9, 9, 9, 9]
-elif pRange == 3:
-    bruteKeys = [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9]
+TOTAL_KEYS = 10 ** ARRAY_RANGE
 
-elif pRange == 2:
-    bruteKeys = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9]
+TIME_START = time.time()
 
-else:
-    bruteKeys = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+for a in itertools.product(range(10), repeat=ARRAY_RANGE):
 
-totalKeys = 16 ** 6
-totalKeysKnown = 16 ** 4
-totalKeyGuesses = totalKeys - totalKeysKnown
-
-timeStart = time.time()
-
-
-# print(totalKeys, 'total possibilities (6 bytes hex key)')
-# print(totalKeysKnown, 'total known possibilities (4 bytes hex key)')
-# print('Key guesses required: ', totalKeyGuesses, sep='')
-
-
-#  for a in itertools.permutations([8,8,8,8,0,0,0,0], r=4): print(a[0], a[1], a[2], a[3], sep='')
-#  for a in itertools.permutations(range(0, 10), r=4): print(a[0], a[1], a[2], a[3], sep='')
-
-
-def unique(iterable):
-    seen = set()
-    for x in iterable:
-        if x in seen:
-            continue
-        seen.add(x)
-        yield x
-
-
-totalKeys = 0
-
-if pRange < pRangeNotTooLarge:
-    for a in unique(itertools.permutations(bruteKeys, r=pRange)):
-        totalKeys += 1
-        bruteKeysCount = totalKeys
-        print('Generated key:', a, 'Total keys:', totalKeys)
-
-for a in unique(itertools.permutations(bruteKeys, r=pRange)):
-    if pRange < pRangeNotTooLarge:
-        bruteKeysCount -= 1
+    TOTAL_KEYS -= 1
 
     # convert tuple to int
-    if pRange == 12:
+    if ARRAY_RANGE == 12:
+        # key1, key2, key3, key4, key5, key6, key7, key8, key9, key10, key11, key12 = a
         key12, key11, key10, key9, key8, key7, key6, key5, key4, key3, key2, key1 = a
-        ykKeyGuess = ykKey + str(key1) + str(key2) + str(key3) + str(key4) + str(key5) + str(key6) + str(key7) + str(
-                key8) + str(key9) + str(key10) + str(key11) + str(key12)
-    elif pRange == 11:
-        key11, key10, key9, key8, key7, key6, key5, key4, key3, key2, key1 = a
-        ykKeyGuess = ykKey + str(key1) + str(key2) + str(key3) + str(key4) + str(key5) + str(key6) + str(key7) + str(
-                key8) + str(key9) + str(key10) + str(key11) + str('0')
-    elif pRange == 10:
-        key10, key9, key8, key7, key6, key5, key4, key3, key2, key1 = a
-        ykKeyGuess = ykKey + str(key1) + str(key2) + str(key3) + str(key4) + str(key5) + str(key6) + str(key7) + str(
-                key8) + str(key9) + str(key10) + str('0') + str('0')
-    elif pRange == 9:
-        key9, key8, key7, key6, key5, key4, key3, key2, key1 = a
-        ykKeyGuess = ykKey + str(key1) + str(key2) + str(key3) + str(key4) + str(key5) + str(key6) + str(key7) + str(
-                key8) + str(key9) + str('0') + str('0') + str('0')
-    elif pRange == 8:
-        # key1, key2, key3, key4, key5, key6, key7, key8 = a
-        key8, key7, key6, key5, key4, key3, key2, key1 = a
-        ykKeyGuess = ykKey + str(key1) + str(key2) + str(key3) + str(key4) + str(key5) + str(key6) + str(key7) + str(
-                key8) + str('0') + str('0') + str('0') + str('0')
-    elif pRange == 7:
-        key7, key6, key5, key4, key3, key2, key1 = a
-        ykKeyGuess = ykKey + str(key1) + str(key2) + str(key3) + str(key4) + str(key5) + str(key6) + str(key7) + str(
-                '0') + str('0') + str('0') + str('0') + str('0')
-    elif pRange == 6:
-        key6, key5, key4, key3, key2, key1 = a
-        ykKeyGuess = ykKey + str(key1) + str(key2) + str(key3) + str(key4) + str(key5) + str(key6) + str('0') + str(
-                '0') + str('0') + str('0') + str('0') + str('0')
-    elif pRange == 5:
-        key5, key4, key3, key2, key1 = a
-        ykKeyGuess = ykKey + str(key1) + str(key2) + str(key3) + str(key4) + str(key5) + str('0') + str('0') + str(
-                '0') + str('0') + str('0') + str('0') + str('0')
-    elif pRange == 4:
-        key4, key3, key2, key1 = a
-        ykKeyGuess = ykKey + str(key1) + str(key2) + str(key3) + str(key4) + str('0') + str('0') + str('0') + str(
-                '0') + str('0') + str('0') + str('0') + str('0')
-    elif pRange == 3:
-        key3, key2, key1 = a
-        ykKeyGuess = ykKey + str(key1) + str(key2) + str(key3) + str('0') + str('0') + str('0') + str('0') + str(
-                '0') + str('0') + str('0') + str('0') + str('0')
-    elif pRange == 2:
-        key2, key1 = a
-        ykKeyGuess = ykKey + str(key1) + str(key2) + str('0') + str('0') + str('0') + str('0') + str('0') + str(
-                '0') + str('0') + str('0') + str('0') + str('0')
+        YK_KEY_GUESS = YK_KEY + str(key1) + str(key2) + str(key3) + str(key4) + str(key5) + str(key6) + str(key7) + str(
+            key8) + str(key9) + str(key10) + str(key11) + str(key12)
 
-    # call([yubikeyPersonalize, ykProfile, ykKeyGuess, ykPrompt, '-z'])
+    # call([YUBIKEY_PERSONALIZE, YK_PROFILE, YK_KEY_GUESS, YK_PROMPT, '-z'])
 
-    p = Popen([yubikeyPersonalize, ykProfile, ykKeyGuess, ykPrompt, '-z'], stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    p = Popen([YUBIKEY_PERSONALIZE, YK_PROFILE, YK_KEY_GUESS, YK_PROMPT, '-z'], stdin=PIPE, stdout=PIPE, stderr=PIPE)
     output, err = p.communicate()
     rc = p.returncode
 
-    errEncoding = chardet.detect(err)
-    keyFail = re.findall('Yubikey core error: write error', err.decode(errEncoding['encoding']))
-    ykExcept1 = re.findall('Invalid access code string:', err.decode(errEncoding['encoding']))
+    err_encoding = chardet.detect(err)
+    KEY_FAIL = re.findall('Yubikey core error: write error', err.decode(err_encoding['encoding']))
+    YK_EXCEPT_1 = re.findall('Invalid access code string:', err.decode(err_encoding['encoding']))
 
-    if not keyFail \
-            and not ykExcept1:
-        # print('Key Found! ', ykKeyGuess[2:10], sep='')
-        print('Key Found! ', ykKeyGuess, sep='')
+    if not KEY_FAIL \
+            and not YK_EXCEPT_1:
+        # print('Key Found! ', YK_KEY_GUESS[2:10], sep='')
+        print('Key Found! ', YK_KEY_GUESS[2:], sep='')
         break
+
     else:
+        print('incorrect key:', YK_KEY_GUESS[2:], '...', 'keys remaining:', TOTAL_KEYS)
 
-        # if ykKeyGuess[10:] == 1111:
-        #    break
+        if TOTAL_KEYS is 0:
+            TIME_END = time.time()
+            print('\n')
+            print('Out of', TOTAL_KEYS, 'keys, none worked')
+            print('\n')
 
-        if pRange < pRangeNotTooLarge:
-            print('incorrect key:', ykKeyGuess[2:], '...', 'keys remaining:', bruteKeysCount)
+            if round((TIME_END - TIME_START) / 60) == 0:
+                print('Last run took:', TIME_END - TIME_START, 'seconds')
+            elif (TIME_END - TIME_START) / 60 < 60:
+                print('Last run took:', (TIME_END - TIME_START) / 60, 'minutes')
+            elif (TIME_END - TIME_START) / 60 > 60:
+                print('Last run took:', (TIME_END - TIME_START) / 60 / 60, 'hours')
 
-            if bruteKeysCount is 0:
-                timeEnd = time.time()
-                print('\n')
-                print('Out of', totalKeys, 'keys, none worked')
-                print('\n')
-
-                if round((timeEnd - timeStart) / 60) == 0:
-                    print('Last run took:', timeEnd - timeStart, 'seconds')
-                elif (timeEnd - timeStart) / 60 < 60:
-                    print('Last run took:', (timeEnd - timeStart) / 60, 'minutes')
-                elif (timeEnd - timeStart) / 60 > 60:
-                    print('Last run took:', (timeEnd - timeStart) / 60 / 60, 'hours')
-        else:
-            print('incorrect key:', ykKeyGuess[2:], 'keys remaining: (Not counted. Range too large)')
+print('End')
