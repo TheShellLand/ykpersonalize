@@ -21,6 +21,11 @@ if platform.system() == 'Linux':
 else:
     YUBIKEY_PERSONALIZE = YUBIKEY_PERSONALIZE_WIN
 
+
+KNOWN = input('Type in known: ')
+if KNOWN:
+    ARRAY_RANGE -= len(KNOWN)
+
 TOTAL_KEYS = 10 ** ARRAY_RANGE
 
 TIME_START = time.time()
@@ -35,6 +40,11 @@ for a in itertools.product(range(10), repeat=ARRAY_RANGE):
         key12, key11, key10, key9, key8, key7, key6, key5, key4, key3, key2, key1 = a
         YK_KEY_GUESS = YK_KEY + str(key1) + str(key2) + str(key3) + str(key4) + str(key5) + str(key6) + str(key7) + str(
             key8) + str(key9) + str(key10) + str(key11) + str(key12)
+
+    elif ARRAY_RANGE == 4:
+        # key1, key2, key3, key4, key5, key6, key7, key8, key9, key10, key11, key12 = a
+        key4, key3, key2, key1 = a
+        YK_KEY_GUESS = YK_KEY + KNOWN + str(key1) + str(key2) + str(key3) + str(key4)
 
     # call([YUBIKEY_PERSONALIZE, YK_PROFILE, YK_KEY_GUESS, YK_PROMPT, '-z'])
 
