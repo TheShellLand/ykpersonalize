@@ -10,7 +10,7 @@ import platform
 from subprocess import Popen, PIPE
 
 YUBIKEY_PERSONALIZE_WIN = 'win/bin/ykpersonalize.exe'
-YUBIKEY_PERSONALIZE_LINUX = 'linux/ykpers-1.17.2/ykpersonalize'
+YUBIKEY_PERSONALIZE_LINUX = 'linux/ykpers-1.18.0/ykpersonalize'
 YK_PROFILE = '-2'  # choose second profile
 YK_KEY = '-c'  # 6 bytes hex 00 11 22 33 44 55
 YK_PROMPT = '-y'  # always commit
