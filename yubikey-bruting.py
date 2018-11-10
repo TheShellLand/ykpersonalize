@@ -35,7 +35,7 @@ class Yubikey:
 
         self.YUBIKEY_PERSONALIZE = {
             'Windows': os.path.join('win', 'bin', 'ykpersonalize.exe'),
-            'Linux': os.path.join('linux', 'ykpers-1.18.0', 'ykpersonalize')
+            'Linux': os.path.join('linux', 'ykpersonalize')
         }
 
         try:
@@ -51,19 +51,31 @@ class Yubikey:
         cmd = [self.YUBIKEY_PERSONALIZE, self.YK_PROFILE_ARG, self.YK_PROMPT_ARG, self.YK_DELETE_ARG, YK_KEY_GUESS]
         p = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         output, error = p.communicate()
-        # rc = p.returncode
+        rc = p.returncode
 
         err_encoding = chardet.detect(error)
         KEY_FAIL = [
             re.findall('Yubikey core error: write error', error.decode(err_encoding['encoding'])),
-            re.findall('Invalid access code string:', error.decode(err_encoding['encoding']))
+            re.findall('Invalid access code string:', error.decode(err_encoding['encoding'])),
+            re.findall('Yubikey core error: no yubikey present', error.decode(err_encoding['encoding'])),
+            re.findall('Operation not permitted', error.decode(err_encoding['encoding'])),
+            re.findall('USB error: Access denied \(insufficient permissions\)', error.decode(err_encoding['encoding']))
         ]
 
         FAILED = 0
 
+        if rc > 0:
+            FAILED += 1
+
         for check in KEY_FAIL:
             if check:
                 FAILED += 1
+                if 'no yubikey present' in check[0]:
+                    print('no yubikey present')
+                    sys.exit(1)
+                if 'Operation not permitted' in check[0] or 'insufficient permissions' in check[0]:
+                    print('insufficient permissions')
+                    sys.exit(1)
 
         if FAILED == 0:
             # print('Key Found! ', YK_KEY_GUESS[2:10], sep='')
@@ -124,7 +136,7 @@ class Yubikey:
         for a in self._key_gen():
             await self._run(a)
             if random.choice(range(100)) == 3:
-                print('{} tries left'.format(total_keys), end='')
+                print('{} tries left :( '.format(total_keys), end='')
             total_keys -= 1
 
         end_time = time.time()
