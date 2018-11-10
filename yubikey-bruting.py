@@ -3,79 +3,149 @@
 
 
 import re
-import chardet
+import os
+import sys
 import time
-import itertools
+import random
+import chardet
+import asyncio
+import logging
 import platform
+import itertools
+
 from subprocess import Popen, PIPE
 
-YUBIKEY_PERSONALIZE_WIN = 'win/bin/ykpersonalize.exe'
-YUBIKEY_PERSONALIZE_LINUX = 'linux/ykpers-1.18.0/ykpersonalize'
-YK_PROFILE = '-2'  # choose second profile
-YK_KEY = '-c'  # 6 bytes hex 00 11 22 33 44 55
-YK_PROMPT = '-y'  # always commit
-ARRAY_RANGE = 12
-
-if platform.system() == 'Linux':
-    YUBIKEY_PERSONALIZE = YUBIKEY_PERSONALIZE_LINUX
-else:
-    YUBIKEY_PERSONALIZE = YUBIKEY_PERSONALIZE_WIN
+logging.basicConfig(level=logging.FATAL)
 
 
-KNOWN = input('Type in known: ')
-if KNOWN:
-    ARRAY_RANGE -= len(KNOWN)
+class Yubikey:
+    """ wrapper for ykpersonalize
+    """
 
-TOTAL_KEYS = 10 ** ARRAY_RANGE
+    def __init__(self, dev=None):
+        self.device = dev
 
-TIME_START = time.time()
+        self.YK_PROFILE_ARG = '-2'  # choose second profile
+        self.YK_KEY_ARG = '-c'  # 6 bytes hex 00 11 22 33 44 55
+        self.YK_PROMPT_ARG = '-y'  # always commit
+        self.YK_DELETE_ARG = '-z'  # delete the configuration in slot 1 or 2
+        self.ARRAY_RANGE = 12
 
-for a in itertools.product(range(10), repeat=ARRAY_RANGE):
+        self.KNOWN = ''
 
-    TOTAL_KEYS -= 1
+        self.YUBIKEY_PERSONALIZE = {
+            'Windows': os.path.join('win', 'bin', 'ykpersonalize.exe'),
+            'Linux': os.path.join('linux', 'ykpers-1.18.0', 'ykpersonalize')
+        }
 
-    # convert tuple to int
-    if ARRAY_RANGE == 12:
-        # key1, key2, key3, key4, key5, key6, key7, key8, key9, key10, key11, key12 = a
-        key12, key11, key10, key9, key8, key7, key6, key5, key4, key3, key2, key1 = a
-        YK_KEY_GUESS = YK_KEY + str(key1) + str(key2) + str(key3) + str(key4) + str(key5) + str(key6) + str(key7) + str(
-            key8) + str(key9) + str(key10) + str(key11) + str(key12)
+        try:
+            self.YUBIKEY_PERSONALIZE = self.YUBIKEY_PERSONALIZE[platform.system()]
+        except:
+            Exception('OS not supported')
+            sys.exit(1)
 
-    elif ARRAY_RANGE == 4:
-        # key1, key2, key3, key4, key5, key6, key7, key8, key9, key10, key11, key12 = a
-        key4, key3, key2, key1 = a
-        YK_KEY_GUESS = YK_KEY + KNOWN + str(key1) + str(key2) + str(key3) + str(key4)
+    async def _run(self, key):
+        """ run ykpersonalize
+        """
+        YK_KEY_GUESS = self.KNOWN + key
+        cmd = [self.YUBIKEY_PERSONALIZE, self.YK_PROFILE_ARG, self.YK_PROMPT_ARG, self.YK_DELETE_ARG, YK_KEY_GUESS]
+        p = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        output, error = p.communicate()
+        # rc = p.returncode
 
-    # call([YUBIKEY_PERSONALIZE, YK_PROFILE, YK_KEY_GUESS, YK_PROMPT, '-z'])
+        err_encoding = chardet.detect(error)
+        KEY_FAIL = [
+            re.findall('Yubikey core error: write error', error.decode(err_encoding['encoding'])),
+            re.findall('Invalid access code string:', error.decode(err_encoding['encoding']))
+        ]
 
-    p = Popen([YUBIKEY_PERSONALIZE, YK_PROFILE, YK_KEY_GUESS, YK_PROMPT, '-z'], stdin=PIPE, stdout=PIPE, stderr=PIPE)
-    output, err = p.communicate()
-    rc = p.returncode
+        FAILED = 0
 
-    err_encoding = chardet.detect(err)
-    KEY_FAIL = re.findall('Yubikey core error: write error', err.decode(err_encoding['encoding']))
-    YK_EXCEPT_1 = re.findall('Invalid access code string:', err.decode(err_encoding['encoding']))
+        for check in KEY_FAIL:
+            if check:
+                FAILED += 1
 
-    if not KEY_FAIL \
-            and not YK_EXCEPT_1:
-        # print('Key Found! ', YK_KEY_GUESS[2:10], sep='')
-        print('Key Found! ', YK_KEY_GUESS[2:], sep='')
-        break
+        if FAILED == 0:
+            # print('Key Found! ', YK_KEY_GUESS[2:10], sep='')
+            print('Key Found! {}'.format(YK_KEY_GUESS))
+            sys.exit(0)
+        else:
+            print('.', end='')
+            sys.stdout.flush()
+            logging.error('incorrect key: {}'.format(YK_KEY_GUESS))
 
-    else:
-        print('incorrect key:', YK_KEY_GUESS[2:], '...', 'keys remaining:', TOTAL_KEYS)
+    def _key_gen(self, limit=None):
+        """ generate keys
+        """
+        i = 0
+        for a in itertools.product(range(10), repeat=self.ARRAY_RANGE):
+            if limit:
+                if i < limit:
+                    yield ''.join(list(str(x) for x in a))
+                i += 1
+            else:
+                yield ''.join(list(str(x) for x in a))
 
-        if TOTAL_KEYS is 0:
-            TIME_END = time.time()
-            print('\n')
-            print('Out of', TOTAL_KEYS, 'keys, none worked')
-            print('\n')
+    async def show_keys(self, limit=None):
+        """ show generated keys
+        """
+        for a in self._key_gen(limit):
+            print(self.KNOWN + a)
 
-            if round((TIME_END - TIME_START) / 60) == 0:
-                print('Last run took:', TIME_END - TIME_START, 'seconds')
-            elif (TIME_END - TIME_START) / 60 < 60:
-                print('Last run took:', (TIME_END - TIME_START) / 60, 'minutes')
-            elif (TIME_END - TIME_START) / 60 > 60:
-                print('Last run took:', (TIME_END - TIME_START) / 60 / 60, 'hours')
+    def input_key(self):
+        """ lets user input key
+        """
+        a = str(input('Type in known: '))
+        self.ARRAY_RANGE = 12
+        self.set_secret(a)
 
-print('End')
+    def set_secret(self, input_key=None):
+        """ set key
+        """
+        assert type(input_key) is str
+        assert int(input_key)
+        assert len(input_key) <= self.ARRAY_RANGE
+        if input_key:
+            self.ARRAY_RANGE -= len(input_key)
+        self.KNOWN = input_key
+        logging.info('known key digits: {}'.format(len(input_key)))
+        logging.info('unknown key digits: {}'.format(self.ARRAY_RANGE))
+
+    async def test_key(self, test_key):
+        await self._run(self.set_secret(test_key))
+
+    async def find_my_key(self):
+        """ start brute forcing
+        """
+        start_time = int(time.time())
+        total_keys = 10 ** self.ARRAY_RANGE
+        tries = total_keys
+        print('total unknown keys: {}'.format(total_keys))
+        for a in self._key_gen():
+            await self._run(a)
+            if random.choice(range(100)) == 3:
+                print('{} tries left'.format(total_keys), end='')
+            total_keys -= 1
+
+        end_time = time.time()
+        print('\n')
+        print('Out of', tries, 'keys, none worked')
+        print('\n')
+
+        if round((end_time - start_time) / 60) == 0:
+            print('That run took:', round(end_time - start_time), 'seconds')
+        elif (end_time - start_time) / 60 < 60:
+            print('That run took:', round(end_time - start_time) / 60, 'minutes')
+        elif (end_time - start_time) / 60 > 60:
+            print('That run took:', (end_time - start_time) / 60 / 60, 'hours')
+
+
+async def main():
+    y = Yubikey()
+    y.input_key()
+    await y.find_my_key()
+
+
+if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
